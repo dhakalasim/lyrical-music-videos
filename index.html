@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lyrical Music Video Creator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div>
+        <h1>Lyrical Music Video Creator</h1>
+        <p>Create responsive lyric-driven music videos with audio, images, and captions.</p>
+      </div>
+      <button id="exportBtn" class="primary-btn">Download Project</button>
+    </header>
+
+    <main class="grid-layout">
+      <section class="panel upload-panel">
+        <h2>Upload Audio & Images</h2>
+        <div class="upload-row">
+          <label class="upload-box" for="audioInput">
+            <span>Upload Audio</span>
+            <input id="audioInput" type="file" accept="audio/*" />
+          </label>
+          <label class="upload-box" for="imageInput">
+            <span>Upload Images</span>
+            <input id="imageInput" type="file" accept="image/*" multiple />
+          </label>
+        </div>
+        <div class="info-block">
+          <audio id="audioPreview" controls></audio>
+          <div id="audioMeta" class="meta-text">No audio selected yet.</div>
+        </div>
+        <div class="drop-zone" id="dropZone">
+          Drag images here or click the upload button.
+        </div>
+      </section>
+
+      <section class="panel timeline-panel">
+        <h2>Slide & Lyrics Editor</h2>
+        <p>Set captions and duration for each slide. The preview syncs the audio with the selected images.</p>
+        <div id="slidesList" class="slides-list"></div>
+        <button id="addSlideBtn" class="secondary-btn">Add Blank Slide</button>
+      </section>
+
+      <section class="panel preview-panel">
+        <h2>Preview</h2>
+        <div class="preview-card">
+          <div class="preview-frame">
+            <img id="currentImage" src="" alt="Slide preview" />
+            <div class="caption-overlay"><span id="currentCaption">No slide selected</span></div>
+          </div>
+          <div class="preview-controls">
+            <button id="startPreviewBtn" class="primary-btn">Start Preview</button>
+            <button id="stopPreviewBtn" class="secondary-btn">Stop</button>
+          </div>
+          <div class="progress-row">
+            <span id="previewTime">0:00</span>
+            <span id="previewStatus">Ready to preview</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
