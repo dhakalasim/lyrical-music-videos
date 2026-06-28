@@ -33,6 +33,15 @@
           <audio id="audioPreview" controls></audio>
           <div id="audioMeta" class="meta-text">No audio selected yet.</div>
         </div>
+        <div class="lyrics-block">
+          <label for="lyricsText">Lyrics / Transcript</label>
+          <textarea id="lyricsText" placeholder="Paste lyrics or transcript here"></textarea>
+          <div class="lyrics-actions">
+            <button id="loadLyricsBtn" class="secondary-btn">Upload Lyrics File</button>
+            <input id="lyricsFileInput" type="file" accept=".txt" hidden />
+            <button id="generateSlidesBtn" class="primary-btn">Auto Finalize Video Mapping</button>
+          </div>
+        </div>
         <div class="drop-zone" id="dropZone">
           Drag images here or click the upload button.
         </div>
@@ -40,7 +49,7 @@
 
       <section class="panel timeline-panel">
         <h2>Slide & Lyrics Editor</h2>
-        <p>Set captions and duration for each slide. The preview syncs the audio with the selected images.</p>
+        <p>Create slides automatically from lyrics or manually edit captions and durations for each frame.</p>
         <div id="slidesList" class="slides-list"></div>
         <button id="addSlideBtn" class="secondary-btn">Add Blank Slide</button>
       </section>

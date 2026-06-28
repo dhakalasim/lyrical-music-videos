@@ -12,10 +12,15 @@ const currentCaption = document.getElementById('currentCaption');
 const previewTime = document.getElementById('previewTime');
 const previewStatus = document.getElementById('previewStatus');
 const exportBtn = document.getElementById('exportBtn');
+const lyricsText = document.getElementById('lyricsText');
+const loadLyricsBtn = document.getElementById('loadLyricsBtn');
+const lyricsFileInput = document.getElementById('lyricsFileInput');
+const generateSlidesBtn = document.getElementById('generateSlidesBtn');
 
 const state = {
   audioFile: null,
   slides: [],
+  lyricsText: '',
   activeSlideIndex: 0,
   preview: {
     running: false,
@@ -48,7 +53,11 @@ function renderSlides() {
 
     slideCard.innerHTML = `
       <label>
-        <span>Image ${index + 1}</span>
+        <span>Section</span>
+        <input type="text" class="section-input" value="${slide.section || ''}" placeholder="Section label" data-index="${index}" readonly />
+      </label>
+      <label>
+        <span>Lyrics / Caption</span>
         <input type="text" class="caption-input" value="${slide.caption}" placeholder="Enter lyrics or caption" data-index="${index}" />
       </label>
       <label>
@@ -75,6 +84,140 @@ function updateCurrentPreview() {
   const slide = state.slides[state.activeSlideIndex];
   currentImage.src = slide.previewUrl;
   currentCaption.textContent = slide.caption || `Slide ${state.activeSlideIndex + 1}`;
+}
+
+function parseLyricsSections(rawText) {
+  const rawLines = rawText.split(/\r?\n/);
+  const sectionTitleRegex = /^(intro|verse|chorus|bridge|pre-chorus|refrain|outro|hook|solo)[:\s-]*/i;
+  const sections = [];
+  let current = { title: null, lines: [] };
+
+  rawLines.forEach((rawLine) => {
+    const line = rawLine.trim();
+
+    if (line === '') {
+      if (current.lines.length > 0) {
+        sections.push(current);
+        current = { title: null, lines: [] };
+      }
+      return;
+    }
+
+    const titleMatch = line.match(sectionTitleRegex);
+    if (titleMatch) {
+      const title = titleMatch[1].toUpperCase();
+      const remainder = line.slice(titleMatch[0].length).trim();
+      if (current.lines.length > 0) {
+        sections.push(current);
+        current = { title: null, lines: [] };
+      }
+      current.title = title;
+      if (remainder.length > 0) {
+        current.lines.push(remainder);
+      }
+      return;
+    }
+
+    current.lines.push(line);
+  });
+
+  if (current.lines.length > 0) {
+    sections.push(current);
+  }
+
+  if (!sections.length) {
+    sections.push({ title: 'LYRICS', lines: rawLines.filter((line) => line.trim().length > 0) });
+  }
+
+  return sections;
+}
+
+function createPlaceholderImage() {
+  return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22120%22 viewBox=%220 0 120 120%22%3E%3Crect width=%22120%22 height=%22120%22 fill=%22343a56%22/%3E%3Ctext x=%2260%22 y=%2268%22 fill=%22%23cbd5e1%22 font-family=%22Inter%22 font-size=%2210%22 text-anchor=%22middle%22%3ELyric Slide%3C/text%3E%3C/svg%3E';
+}
+
+function buildSlidesFromLyrics() {
+  const sections = parseLyricsSections(state.lyricsText);
+  if (!sections.length) return [];
+
+  const imageUrls = state.slides
+    .filter((slide) => slide.previewUrl && slide.file)
+    .map((slide) => slide.previewUrl);
+
+  const audioDuration = Number.isFinite(audioPreview.duration) && audioPreview.duration > 0
+    ? audioPreview.duration
+    : Math.max(5, sections.length * 8);
+
+  const phraseBlocks = [];
+  sections.forEach((section) => {
+    const lines = section.lines;
+    const chunkSize = 3;
+    for (let i = 0; i < lines.length; i += chunkSize) {
+      const chunk = lines.slice(i, i + chunkSize);
+      phraseBlocks.push({
+        title: section.title,
+        lines: chunk,
+      });
+    }
+  });
+
+  const totalWords = phraseBlocks.reduce((sum, block) => {
+    return sum + block.lines.join(' ').split(/\s+/).length;
+  }, 0);
+
+  const slides = phraseBlocks.map((block, index) => {
+    const text = block.lines.join(' ');
+    const caption = block.title ? `${block.title}: ${text}` : text;
+    const wordCount = Math.max(1, text.split(/\s+/).length);
+    const ratio = wordCount / totalWords;
+    const duration = Math.max(4, Math.round(audioDuration * ratio));
+
+    return {
+      file: null,
+      previewUrl: imageUrls.length ? imageUrls[index % imageUrls.length] : createPlaceholderImage(),
+      caption,
+      duration,
+      section: block.title || 'LYRIC',
+    };
+  });
+
+  const assignedTotal = slides.reduce((sum, slide) => sum + slide.duration, 0);
+  if (assignedTotal > 0 && audioDuration > 0) {
+    const scale = audioDuration / assignedTotal;
+    slides.forEach((slide) => {
+      slide.duration = Math.max(4, Math.round(slide.duration * scale));
+    });
+  }
+
+  return slides;
+}
+
+function generateSlidesFromLyrics() {
+  if (!state.lyricsText.trim()) {
+    previewStatus.textContent = 'Paste lyrics or upload a lyrics file first.';
+    return;
+  }
+
+  const generatedSlides = buildSlidesFromLyrics();
+  if (!generatedSlides.length) {
+    previewStatus.textContent = 'Unable to generate slides from the provided lyrics.';
+    return;
+  }
+
+  state.slides = generatedSlides;
+  renderSlides();
+  setActiveSlide(0);
+  previewStatus.textContent = 'Generated slides from lyrics successfully.';
+}
+
+function loadLyricsFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.lyricsText = reader.result;
+    lyricsText.value = reader.result;
+    previewStatus.textContent = 'Lyrics file loaded. Generate slides from lyrics.';
+  };
+  reader.readAsText(file);
 }
 
 function setActiveSlide(index) {
@@ -202,6 +345,22 @@ imageInput.addEventListener('change', (event) => {
   files.forEach(addSlide);
 });
 
+lyricsText.addEventListener('input', (event) => {
+  state.lyricsText = event.target.value;
+});
+
+loadLyricsBtn.addEventListener('click', () => {
+  lyricsFileInput.click();
+});
+
+lyricsFileInput.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  loadLyricsFile(file);
+});
+
+generateSlidesBtn.addEventListener('click', generateSlidesFromLyrics);
+
 dropZone.addEventListener('dragover', (event) => {
   event.preventDefault();
   dropZone.classList.add('drag-active');
@@ -238,6 +397,7 @@ stopPreviewBtn.addEventListener('click', stopPreview);
 exportBtn.addEventListener('click', () => {
   const payload = {
     audioFileName: state.audioFile?.name || null,
+    lyrics: state.lyricsText || null,
     slides: state.slides.map(({ caption, duration }) => ({ caption, duration })),
     timestamp: new Date().toISOString(),
   };
